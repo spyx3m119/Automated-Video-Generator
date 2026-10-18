@@ -57,10 +57,11 @@ export function updateEnvValues(updates: Partial<Record<EditableEnvKey, string>>
 
 export function getSetupStatus(): SetupStatus {
     const envValues = readEnvValues();
-    const hasPexelsKey = Boolean(envValues.PEXELS_API_KEY?.trim());
-    const hasPixabayKey = Boolean(envValues.PIXABAY_API_KEY?.trim());
-    const hasGeminiKey = Boolean(envValues.GEMINI_API_KEY?.trim());
-    const hasPublicBaseUrl = Boolean(envValues.PUBLIC_BASE_URL?.trim());
+    // Check both process.env (Coolify/Docker) and .env file (web UI saves)
+    const hasPexelsKey = Boolean(process.env.PEXELS_API_KEY?.trim() || envValues.PEXELS_API_KEY?.trim());
+    const hasPixabayKey = Boolean(process.env.PIXABAY_API_KEY?.trim() || envValues.PIXABAY_API_KEY?.trim());
+    const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim() || envValues.GEMINI_API_KEY?.trim());
+    const hasPublicBaseUrl = Boolean(process.env.PUBLIC_BASE_URL?.trim() || envValues.PUBLIC_BASE_URL?.trim());
     const voiceEngine = getVoiceEngineStatus();
 
     return {
