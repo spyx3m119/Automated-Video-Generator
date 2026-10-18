@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://spyx3m119.github.io/Automated-Video-Generator/sitemap.xml

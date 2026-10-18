@@ -1,0 +1,20 @@
+title: Automated Video Generator
+description: Free and open-source AI text-to-video generator built with Remotion, Edge-TTS, and stock media. Self-hosted, no watermark, MIT licensed.
+url: "https://spyx3m119.github.io"
+baseurl: "/Automated-Video-Generator"
+author: Premkumar
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+social:
+  name: Automated Video Generator
+  links:
+    - https://github.com/spyx3m119/Automated-Video-Generator
+defaults:
+  - scope:
+      path: ""
+    values:
+      image:
+        path: https://raw.githubusercontent.com/spyx3m119/Automated-Video-Generator/main/assets/github-social-preview.svg
+        width: 1280
+        height: 640

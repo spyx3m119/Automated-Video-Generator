@@ -1,0 +1,27 @@
+# Global owners
+* @spyx3m119
+
+# Core source code
+/src/ @spyx3m119
+
+# Documentation
+/docs/ @spyx3m119
+/docs/**/*.md @spyx3m119
+README.md @spyx3m119
+
+# CI/CD configuration
+/.github/ @spyx3m119
+/.github/workflows/ @spyx3m119
+
+# Configuration files
+package.json @spyx3m119
+tsconfig.json @spyx3m119
+Dockerfile @spyx3m119
+docker-compose.yml @spyx3m119
+
+# Community health files
+CODE_OF_CONDUCT.md @spyx3m119
+CONTRIBUTING.md @spyx3m119
+SECURITY.md @spyx3m119
+CHANGELOG.md @spyx3m119
+ROADMAP.md @spyx3m119
