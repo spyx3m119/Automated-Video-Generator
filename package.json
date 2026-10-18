@@ -154,7 +154,7 @@
     "@remotion/captions": "^4.0.503",
     "@remotion/cli": "^4.0.503",
     "@remotion/media-utils": "^4.0.503",
-    "@remotion/renderer": "^4.0.503",
+    "@remotion/renderer": "^4.0.535",
     "@remotion/shapes": "^4.0.503",
     "@remotion/paths": "^4.0.503",
     "@remotion/motion-blur": "^4.0.503",
