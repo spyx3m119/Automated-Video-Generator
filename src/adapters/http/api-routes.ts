@@ -59,7 +59,6 @@ router.get('/voices', asyncHandler(AiController.getVoices));
 router.get('/setup/status', asyncHandler(SetupController.getStatus));
 router.post(
     '/setup/env',
-    requireLocalAccess,
     validateRequest({ body: updateEnvBodySchema }),
     asyncHandler(SetupController.updateEnv),
 );
