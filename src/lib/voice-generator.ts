@@ -315,6 +315,55 @@ async function generateSceneVoiceoverWithKokoroWrapper(scene: Scene, outputDir: 
     }
 }
 
+/**
+ * ElevenLabs wrapper.
+ *
+ * NOTE: the portal's voice dropdown is populated with Edge-TTS voice names
+ * (e.g. `en-US-GuyNeural`), which are NOT valid ElevenLabs voice IDs — passing
+ * one through would 404. So prefer an explicit ELEVENLABS_VOICE_ID, and only
+ * forward `config.voice` when it actually looks like an ElevenLabs ID.
+ */
+async function generateSceneVoiceoverWithElevenLabsWrapper(
+    scene: Scene,
+    outputDir: string,
+    config: VoiceConfig,
+): Promise<AudioResult> {
+    const outputPath = path.join(outputDir, `scene_${scene.sceneNumber}_voice.mp3`);
+    const existingAudio = resolveExistingAudio(outputPath, scene.voiceoverText);
+    if (existingAudio) return existingAudio;
+
+    const cleanText = cleanVoiceoverText(scene.voiceoverText);
+    if (!cleanText) return { path: '', duration: Math.max(3, scene.duration || 3) };
+
+    try {
+        const { synthesize } = await import('../agentic/services/tts/elevenlabs.js');
+        const envVoice = (process.env.ELEVENLABS_VOICE_ID || '').trim();
+        const configured = (config.voice || '').trim();
+        const voiceId = envVoice || (/^[A-Za-z0-9]{20}$/.test(configured) ? configured : '');
+
+        const produced = await synthesize(cleanText, voiceId ? { voice_id: voiceId } : {});
+        // The provider writes to its own timestamped path; move it into the
+        // per-scene convention so hash sidecars, resume and cleanup still work.
+        fs.copyFileSync(produced, outputPath);
+        try {
+            fs.unlinkSync(produced);
+        } catch {
+            /* best effort */
+        }
+        assertGeneratedAudioFile(outputPath);
+        writeAudioHashSidecar(outputPath, scene.voiceoverText);
+        return { path: outputPath, duration: getAudioDuration(outputPath, scene.voiceoverText) };
+    } catch (error: any) {
+        if (fs.existsSync(outputPath))
+            try {
+                fs.unlinkSync(outputPath);
+            } catch {
+                /* ignore */
+            }
+        throw new Error(`ElevenLabs failed for scene ${scene.sceneNumber}: ${error.message}`);
+    }
+}
+
 // ─── Custom API Providers (continued) ───────────────────────────────────
 async function generateSceneVoiceoverWithVoiceboxWrapper(
     scene: Scene,
@@ -423,6 +472,19 @@ async function generateSceneVoiceoverWithRetry(
             }
         }
         throw lastError || new Error('Kokoro TTS failed after all retries');
+    }
+
+    if (provider === 'elevenlabs') {
+        let lastError: Error | null = null;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return await generateSceneVoiceoverWithElevenLabsWrapper(scene, outputDir, config);
+            } catch (error: any) {
+                lastError = error;
+                if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS * attempt);
+            }
+        }
+        throw lastError || new Error('ElevenLabs TTS failed after all retries');
     }
 
     if (provider === 'voicebox' || provider === 'xtts' || provider === 'openai-local') {

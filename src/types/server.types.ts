@@ -42,7 +42,7 @@ export interface SetupStatus {
     edgeTtsReady: boolean;
     voiceFallbackReady: boolean;
     voiceGenerationReady: boolean;
-    voiceEngineMode: 'edge-tts' | 'windows-sapi-fallback' | 'voicebox' | 'xtts' | 'openai-local' | 'unavailable';
+    voiceEngineMode: 'edge-tts' | 'windows-sapi-fallback' | 'voicebox' | 'xtts' | 'openai-local' | 'elevenlabs' | 'unavailable';
     voiceEngineMessage: string;
     readyForGeneration: boolean;
 }
