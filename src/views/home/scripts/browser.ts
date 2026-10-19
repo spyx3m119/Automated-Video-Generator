@@ -101,7 +101,7 @@ async function loadSidebar() {
         const drivesJson = await drivesRes.json();
         if (drivesJson.success && drivesList) {
             drivesList.innerHTML = '';
-            (drivesJson.data || []).forEach((d: string) => {
+            (drivesJson.data || []).forEach((d) => {
                 const el = document.createElement('div');
                 el.className = 'sidebar-item';
                 el.dataset.path = d;
