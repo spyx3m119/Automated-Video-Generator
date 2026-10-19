@@ -9,11 +9,11 @@ form.addEventListener('submit', async (e) => {
         title: document.getElementById('title').value,
         script: document.getElementById('script').value,
         orientation: document.getElementById('orientation').value,
-        language: document.getElementById('narratorMode').value === 'ai' ? document.getElementById('language').value : undefined,
+        language: document.getElementById('narratorMode').value === 'ai' ? (document.getElementById('language').value || undefined) : undefined,
         voice: document.getElementById('narratorMode').value === 'ai' ? (document.getElementById('voice').value || undefined) : undefined,
-        personalAudio: document.getElementById('narratorMode').value === 'personal' ? document.getElementById('personalAudio').value : undefined,
+        personalAudio: document.getElementById('narratorMode').value === 'personal' ? (document.getElementById('personalAudio').value || undefined) : undefined,
         backgroundMusic: document.getElementById('backgroundMusic').value,
-        defaultVideo: document.getElementById('defaultVideo').value,
+        defaultVideo: document.getElementById('defaultVideo').value || undefined,
         showText: document.getElementById('showText').checked,
         skipReview: !document.getElementById('enableReview').checked,
         textConfig: {
@@ -33,7 +33,12 @@ form.addEventListener('submit', async (e) => {
         });
         const json = await res.json();
         if (!res.ok || !json.success) {
-            throw new Error(json.error || 'Unable to start render.');
+            // Surface per-field validation details: a bare "Invalid request payload."
+            // hides which field the server actually rejected.
+            const details = Array.isArray(json.details)
+                ? json.details.map((d) => d.path + ': ' + d.message).join('; ')
+                : '';
+            throw new Error([json.error, details].filter(Boolean).join(' — ') || 'Unable to start render.');
         }
         window.location.href = json.data.statusPageUrl;
     } catch (err) {
