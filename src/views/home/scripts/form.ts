@@ -26,7 +26,7 @@ form.addEventListener('submit', async (e) => {
         }
     };
     try {
-        const res = await fetch('/api/jobs', {
+        const res = await fetch('/generate-video', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
