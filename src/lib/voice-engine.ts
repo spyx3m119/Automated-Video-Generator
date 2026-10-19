@@ -330,10 +330,10 @@ function buildVoiceEngineUnavailableMessage(): string {
 
 export function getVoiceEngineStatus(): VoiceEngineStatus {
     const provider = (process.env.TTS_PROVIDER || '').toLowerCase().trim();
-    if (provider === 'voicebox' || provider === 'xtts' || provider === 'openai-local') {
+    if (provider === 'voicebox' || provider === 'xtts' || provider === 'openai-local' || provider === 'elevenlabs') {
         return {
             activeEngine: provider as any,
-            detail: `Using custom local API provider: ${provider}`,
+            detail: `Using ${provider} TTS provider`,
             edgeTtsReady: false,
             fallbackReady: true,
             generationReady: true,
