@@ -1,8 +1,10 @@
 import express, { NextFunction, Request, Response } from 'express';
 import apiRoutes from './adapters/http/api-routes';
+import authRoutes from './adapters/http/auth-routes';
 import viewRoutes from './adapters/http/view-routes';
 import fileRoutes from './adapters/http/file-routes';
 import agenticRoutes from './adapters/http/agentic-controller.js';
+import { requireAuth } from './middleware/auth';
 import { requireLocalAccess } from './middleware/local-only';
 import { startJobController } from './adapters/http/jobs-controller';
 import { RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS } from './constants/config';
@@ -61,6 +63,22 @@ function isAllowedOrigin(origin: string): boolean {
     return isLoopbackOrigin(origin);
 }
 
+/**
+ * Same-origin requests are inherently safe, but the allowlist above only knows
+ * about *configured* origins. Behind a reverse proxy (Coolify) with neither
+ * ALLOWED_ORIGINS nor PUBLIC_BASE_URL set, every browser POST — including the
+ * sign-in form — was rejected with "Origin not allowed." Compare the Origin host
+ * against the request's own Host header so same-origin always passes.
+ */
+function isSameOriginRequest(req: Request, origin: string): boolean {
+    try {
+        const host = req.headers.host;
+        return Boolean(host) && new URL(origin).host === host;
+    } catch {
+        return false;
+    }
+}
+
 const startJobLimiter = createMemoryRateLimiter({
     keyPrefix: 'legacy-start-job',
     max: RATE_LIMIT_MAX,
@@ -116,7 +134,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         return;
     }
 
-    if (!isAllowedOrigin(origin)) {
+    if (!isAllowedOrigin(origin) && !isSameOriginRequest(req, origin)) {
         if (req.method === 'OPTIONS') {
             res.status(403).end();
             return;
@@ -140,6 +158,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use(express.json({ limit: '32kb', strict: true }));
+// The sign-in form is a plain HTML POST, so it arrives urlencoded.
+app.use(express.urlencoded({ extended: false, limit: '8kb' }));
 
 app.use((req: Request, res: Response, next: NextFunction) => {
     if (
@@ -154,6 +174,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     }
     next();
 });
+
+// Shared-secret gate (no-op unless APP_ACCESS_PASSWORD is set). Mounted ahead of
+// static files and every route so nothing is reachable unauthenticated.
+app.use(authRoutes);
+app.use(requireAuth);
 
 app.use(express.static(resolveRuntimePublicPath()));
 app.use(express.static(resolveProjectPath('public')));

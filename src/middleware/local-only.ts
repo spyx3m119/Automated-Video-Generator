@@ -1,5 +1,6 @@
 import { Request, RequestHandler } from 'express';
 import { ForbiddenError } from '../lib/errors';
+import { isAuthenticated } from './auth';
 
 function normalizeAddress(address: string | undefined): string {
     return (address || '').replace(/^::ffff:/, '').split('%')[0];
@@ -11,6 +12,13 @@ function isLoopbackAddress(address: string | undefined): boolean {
 }
 
 export function isLocalRequest(req: Request): boolean {
+    // An authenticated session is trusted exactly like loopback. This is what
+    // lets the loopback-only admin routes work on a public deployment: the
+    // shared-secret gate (middleware/auth.ts) becomes the real boundary.
+    if (isAuthenticated(req)) {
+        return true;
+    }
+
     // SECURITY: ALLOW_UNSAFE_REMOTE_ADMIN is a deliberate escape hatch for
     // trusted LAN/dev use. It must NEVER downgrade write/destructive routes —
     // those stay loopback-only so a remote caller cannot read or write the

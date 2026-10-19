@@ -43,6 +43,15 @@ export class BadRequestError extends AppError {
 }
 
 /**
+ * 401 Unauthorized helper
+ */
+export class UnauthorizedError extends AppError {
+    constructor(message: string = 'Authentication required.', details?: any) {
+        super(message, 401, 'unauthenticated', details);
+    }
+}
+
+/**
  * 403 Forbidden helper
  */
 export class ForbiddenError extends AppError {

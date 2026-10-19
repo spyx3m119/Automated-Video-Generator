@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import { HOST, PORT } from '../../constants/config';
 import app from '../../app';
+import { logAuthMode } from '../../middleware/auth';
 import { redactSecrets } from '../../agentic/operations/security.js';
 
 export { app as expressApp };
@@ -76,6 +77,7 @@ export function startServer(port?: number): Promise<void> {
     const listenPort = port || PORT;
 
     installCrashGuards();
+    logAuthMode();
 
     return new Promise((resolve, reject) => {
         const server = app.listen(listenPort, HOST, () => {
