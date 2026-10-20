@@ -806,14 +806,14 @@ export function jobPage(req: Request, jobId: string, cspNonce?: string): string 
                     return;
                 }
 
-                // alt.url comes from Pexels/Pixabay (trusted APIs) — not user input.
+                // alt.url / alt.thumbnail come from Pexels/Pixabay (trusted APIs).
                 alternatives.forEach((alt, i) => {
                     const div = document.createElement('div');
                     div.className = 'asset-item';
-                    const isVideo = alt.type === 'video';
-                    div.innerHTML = (isVideo
-                        ? '<div class="asset-preview" style="display:flex;align-items:center;justify-content:center;background:var(--surface);min-height:120px">Video</div>'
-                        : '<img src="' + alt.url + '" class="asset-preview">')
+                    const thumbUrl = alt.thumbnail || (alt.type === 'image' ? alt.url : '');
+                    div.innerHTML = (thumbUrl
+                        ? '<img src="' + thumbUrl + '" class="asset-preview">'
+                        : '<div class="asset-preview" style="display:flex;align-items:center;justify-content:center;background:var(--surface);min-height:120px">Video</div>')
                         + '<span class="tag-copy">Alternative ' + (i + 1) + '</span>';
                     div.addEventListener('click', () => swapAlternative(alt));
                     grid.appendChild(div);
@@ -826,6 +826,8 @@ export function jobPage(req: Request, jobId: string, cspNonce?: string): string 
         }
 
         async function swapAlternative(alt) {
+            const modal = document.getElementById('gallery-modal');
+            modal.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;flex-direction:column;gap:12px"><p style="font-size:28px">⏳</p><p class="muted">Downloading replacement…</p></div>';
             try {
                 const json = await requestJson('/api/jobs/' + jobId + '/scenes/' + currentIdx + '/swap', {
                     method: 'POST',

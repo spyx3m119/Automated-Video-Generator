@@ -196,6 +196,7 @@ export async function searchVideos(
                 height: videoFile?.height || v.height || 0,
                 photographer: videoFile?.photographer || v.photographer || undefined,
                 videoDuration: v.duration || TARGET_VIDEO_DURATION_SECONDS,
+                thumbnail: v.image || undefined,
             };
         });
 
