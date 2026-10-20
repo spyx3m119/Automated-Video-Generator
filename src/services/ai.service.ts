@@ -31,7 +31,10 @@ function getGeminiApiKey(): string {
 }
 
 function buildGeminiUrl(apiKey: string): string {
-    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // gemini-2.5-flash is deprecated for new users; 3.8-flash is the current
+    // free-tier model. Override with GEMINI_MODEL if Google changes this again.
+    const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 }
 
 function shouldRetry(error: unknown): boolean {

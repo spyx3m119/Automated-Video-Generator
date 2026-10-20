@@ -13,7 +13,7 @@ const console = {
 const RAW_AI_PROVIDER_MV = process.env.AI_PROVIDER;
 const AI_PROVIDER = RAW_AI_PROVIDER_MV !== undefined ? RAW_AI_PROVIDER_MV.trim().toLowerCase() || '' : 'ollama';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim() || '';
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
 const MEDIA_VERIFICATION_CONFIDENCE = Math.max(
     1,
     Math.min(10, Number.parseInt(process.env.MEDIA_VERIFICATION_CONFIDENCE || '6', 10) || 6),
