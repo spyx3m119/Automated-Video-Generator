@@ -262,17 +262,18 @@ export async function generateVideo(
                     }
 
                     // Store alternatives so the edit-phase picker can offer swaps.
-                    if (Array.isArray(candidates) && candidates.length > 0) {
-                        visual = visual || candidates[0];
-                        if (visual) {
-                            visual.alternatives = candidates.slice(1).map((c) => ({
-                                url: c.url,
-                                type: c.type,
-                                width: c.width,
-                                height: c.height,
-                            }));
-                        }
-                    }
+                                    if (Array.isArray(candidates) && candidates.length > 0) {
+                                        visual = visual || candidates[0];
+                                        if (visual) {
+                                            visual.alternatives = candidates.slice(1).map((c) => ({
+                                                url: c.url,
+                                                type: c.type,
+                                                width: c.width,
+                                                height: c.height,
+                                                thumbnail: c.thumbnail,
+                                            }));
+                                        }
+                                    }
                 }
 
                 if (!visual) {
