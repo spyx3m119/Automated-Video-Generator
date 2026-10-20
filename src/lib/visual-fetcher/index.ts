@@ -66,6 +66,7 @@ export {
     searchFreeImages,
     searchPixabayVideos,
     fetchVisualsForScene,
+    fetchVisualCandidates,
     optimizeKeywordsWithGemini,
 } from './search';
 

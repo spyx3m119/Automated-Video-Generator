@@ -38,3 +38,13 @@ export const refineSceneWithAI = async (req: Request, res: Response) => {
     );
     res.json({ success: true, data: updatedScene });
 };
+
+export const swapSceneVisual = async (req: Request, res: Response) => {
+    const { url, type } = req.body as { url: string; type: 'image' | 'video' };
+    const updatedScene = await sceneAppService.swapSceneVisual(
+        String(req.params.jobId),
+        toSceneIndex(String(req.params.sceneIndex)),
+        { url, type },
+    );
+    res.json({ success: true, data: updatedScene });
+};

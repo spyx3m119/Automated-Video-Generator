@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { jobStore } from '../infrastructure/persistence/job-store';
-import { deleteJobScene, reorderJobScenes, updateSceneInJob } from '../infrastructure/pipeline/scene-editor';
+import { deleteJobScene, reorderJobScenes, swapSceneVisual, updateSceneInJob } from '../infrastructure/pipeline/scene-editor';
 import { NotFoundError } from '../lib/errors';
 import { refineSceneAI } from '../services/ai.service';
 import { resolveProjectPath } from '../shared/runtime/paths';
@@ -59,6 +59,11 @@ export class SceneAppService {
     deleteScene(jobId: string, sceneIndex: number) {
         const outputDir = getJobOutputDir(jobId);
         return deleteJobScene(outputDir, sceneIndex);
+    }
+
+    swapSceneVisual(jobId: string, sceneIndex: number, alternative: { url: string; type: 'image' | 'video' }) {
+        const outputDir = getJobOutputDir(jobId);
+        return swapSceneVisual(outputDir, sceneIndex, alternative);
     }
 
     async refineScene(jobId: string, sceneIndex: number, instruction: string) {

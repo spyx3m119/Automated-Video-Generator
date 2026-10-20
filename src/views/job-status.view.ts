@@ -794,19 +794,49 @@ export function jobPage(req: Request, jobId: string, cspNonce?: string): string 
 
         async function loadGallery() {
             try {
-                const json = await requestJson('/api/fs/assets');
                 const grid = document.getElementById('gallery-grid');
                 grid.innerHTML = '';
-                json.data.forEach(item => {
+
+                const scene = scenes[currentIdx];
+                const alternatives = scene?.visual?.alternatives || [];
+
+                if (alternatives.length === 0) {
+                    grid.innerHTML = '<p class="muted" style="padding:20px">No alternatives available for this scene.</p>';
+                    document.getElementById('gallery-modal').style.display = 'flex';
+                    return;
+                }
+
+                // alt.url comes from Pexels/Pixabay (trusted APIs) — not user input.
+                alternatives.forEach((alt, i) => {
                     const div = document.createElement('div');
                     div.className = 'asset-item';
-                    div.innerHTML = '<img src="' + item.assetUrl + '" class="asset-preview"><span class="tag-copy">' + escapeHtml(item.filename) + '</span>';
-                    div.addEventListener('click', () => swap(item.filename));
+                    const isVideo = alt.type === 'video';
+                    div.innerHTML = (isVideo
+                        ? '<div class="asset-preview" style="display:flex;align-items:center;justify-content:center;background:var(--surface);min-height:120px">Video</div>'
+                        : '<img src="' + alt.url + '" class="asset-preview">')
+                        + '<span class="tag-copy">Alternative ' + (i + 1) + '</span>';
+                    div.addEventListener('click', () => swapAlternative(alt));
                     grid.appendChild(div);
                 });
-                document.getElementById('gallery-modal').style.display='flex';
+
+                document.getElementById('gallery-modal').style.display = 'flex';
             } catch (error) {
                 alert('Gallery failed: ' + error.message);
+            }
+        }
+
+        async function swapAlternative(alt) {
+            try {
+                const json = await requestJson('/api/jobs/' + jobId + '/scenes/' + currentIdx + '/swap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: alt.url, type: alt.type })
+                });
+                scenes[currentIdx] = json.data;
+                renderTimeline();
+                document.getElementById('gallery-modal').style.display = 'none';
+            } catch (error) {
+                alert('Swap failed: ' + error.message);
             }
         }
 

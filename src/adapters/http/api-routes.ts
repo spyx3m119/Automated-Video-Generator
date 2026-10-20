@@ -89,6 +89,11 @@ router.post(
     asyncHandler(ScenesController.refineSceneWithAI),
 );
 router.post(
+    '/jobs/:jobId/scenes/:sceneIndex/swap',
+    validateRequest({ params: sceneParamsSchema }),
+    asyncHandler(ScenesController.swapSceneVisual),
+);
+router.post(
     '/jobs/:jobId/critique',
     validateRequest({ params: jobIdParamsSchema, body: critiqueBodySchema }),
     asyncHandler(EditorController.critiqueJob),

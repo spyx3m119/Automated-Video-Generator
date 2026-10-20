@@ -1,5 +1,5 @@
 import { parseScript, validateScript } from './lib/script-parser';
-import { fetchVisualsForScene, downloadMedia, getVideoMetadata, invalidateCachedVisual } from './lib/visual-fetcher';
+import { fetchVisualsForScene, fetchVisualCandidates, downloadMedia, getVideoMetadata, invalidateCachedVisual } from './lib/visual-fetcher';
 import { generateVoiceovers, DEFAULT_VOICE_CONFIG, LANGUAGE_DEFAULTS } from './lib/voice-generator';
 import { AudioCaptionSegment } from './lib/voice-types';
 import { getAudioDuration, splitAudioFile, generateSilence, applyAutoDucking } from './lib/audio-processor';
@@ -228,7 +228,9 @@ export async function generateVideo(
                 }
 
                 if (!visual) {
-                    visual = await fetchVisualsForScene(scene.searchKeywords, true, orientation, scene.voiceoverText);
+                    const candidates = await fetchVisualCandidates(scene.searchKeywords, true, orientation, 6);
+                    const candidate = candidates[0] ?? null;
+                    visual = candidate;
 
                     if (visual && visual.type === 'video') {
                         try {
@@ -256,6 +258,19 @@ export async function generateVideo(
                         } catch (err: any) {
                             invalidateCachedVisual(scene.searchKeywords, orientation);
                             visual = null;
+                        }
+                    }
+
+                    // Store alternatives so the edit-phase picker can offer swaps.
+                    if (Array.isArray(candidates) && candidates.length > 0) {
+                        visual = visual || candidates[0];
+                        if (visual) {
+                            visual.alternatives = candidates.slice(1).map((c) => ({
+                                url: c.url,
+                                type: c.type,
+                                width: c.width,
+                                height: c.height,
+                            }));
                         }
                     }
                 }

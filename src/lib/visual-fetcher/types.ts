@@ -21,6 +21,14 @@ export interface MediaAsset {
      *  Consumed by the acquire-stage relevance filter to reject off-topic
      *  assets (e.g. a gorilla clip returned for "magma chamber"). */
     title?: string;
+    /** Alternative candidates from the same search — used by the edit-phase
+     *  picker so the user can swap to a different visual. */
+    alternatives?: Array<{
+        url: string;
+        type: 'image' | 'video';
+        width: number;
+        height: number;
+    }>;
 }
 
 export interface VideoMetadata {

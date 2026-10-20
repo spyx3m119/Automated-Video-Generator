@@ -412,6 +412,27 @@ export async function searchPixabayVideos(
 // fetchVisualsForScene — Pexels primary, free sources as fallback
 // ========================================================================
 
+export async function fetchVisualCandidates(
+    keywords: string[],
+    preferVideo: boolean,
+    orientation: 'portrait' | 'landscape' | 'none' | 'square' = 'portrait',
+    count: number = 6,
+): Promise<MediaAsset[]> {
+    const candidates: MediaAsset[] = [];
+    const seen = new Set<string>();
+
+    for (let i = 0; i < count; i++) {
+        const result = await fetchVisualsForScene(keywords, preferVideo, orientation, undefined, i);
+        const asset = Array.isArray(result) ? result[0] : result;
+        if (asset && asset.url && !seen.has(asset.url)) {
+            seen.add(asset.url);
+            candidates.push(asset);
+        }
+    }
+
+    return candidates;
+}
+
 export async function fetchVisualsForScene(
     keywords: string[],
     preferVideo: boolean,

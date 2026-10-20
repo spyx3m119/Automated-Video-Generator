@@ -140,6 +140,53 @@ export async function reorderJobScenes(outputDir: string, fromIndex: number, toI
     return data.scenes;
 }
 
+export async function swapSceneVisual(
+    outputDir: string,
+    sceneIndex: number,
+    alternative: { url: string; type: 'image' | 'video' },
+): Promise<any> {
+    const dataPath = path.join(outputDir, 'scene-data.json');
+    if (!fs.existsSync(dataPath)) {
+        throw new Error('Scene data not found at: ' + dataPath);
+    }
+
+    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    const scene = data.scenes[sceneIndex];
+    if (!scene) {
+        throw new Error(`Scene ${sceneIndex} not found in data.`);
+    }
+
+    const workspace = createPipelineWorkspace(outputDir, data.assetNamespace);
+    const isVideo = alternative.type === 'video';
+    const targetDir = isVideo ? workspace.videosDir : workspace.visualsDir;
+    const ext = isVideo ? '.mp4' : '.jpg';
+    const filename = `scene_${scene.sceneNumber}_alt${Date.now()}${ext}`;
+
+    const downloadResult = await downloadMedia(alternative.url, targetDir, filename);
+
+    const visual: any = {
+        type: alternative.type,
+        url: alternative.url,
+        width: data.orientation === 'landscape' ? 1920 : 1080,
+        height: data.orientation === 'landscape' ? 1080 : 1920,
+        localPath: toPublicRelativePath(downloadResult.path),
+    };
+
+    if (isVideo) {
+        visual.videoDuration = downloadResult.videoDuration;
+        visual.videoTrimAfterFrames = downloadResult.videoTrimAfterFrames;
+    }
+
+    // Preserve remaining alternatives (remove the selected one)
+    const currentAlternatives = scene.visual?.alternatives || [];
+    visual.alternatives = currentAlternatives.filter((a: any) => a.url !== alternative.url);
+
+    scene.visual = visual;
+    data.totalDuration = data.scenes.reduce((acc: number, s: any) => acc + (s.duration || 0), 0);
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+    return scene;
+}
+
 export async function deleteJobScene(outputDir: string, index: number): Promise<any[]> {
     const dataPath = path.join(outputDir, 'scene-data.json');
     if (!fs.existsSync(dataPath)) throw new Error('Scene data not found');
