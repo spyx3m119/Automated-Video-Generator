@@ -630,10 +630,9 @@ export const renderVideo = async (outputDir: string = resolveProjectPath('output
             // Ignore cleanup errors
         }
 
-        // Delete scene-data.json and metadata from outputDir (working files, not final MP4)
-        try { if (fs.existsSync(sceneDataPath)) fs.unlinkSync(sceneDataPath); } catch { /* ignore */ }
-        const thumbPath = path.join(outputDir, 'thumbnail.jpg');
-        try { if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath); } catch { /* ignore */ }
+        // Delete metadata from outputDir (working files, not final MP4).
+        // scene-data.json and thumbnail.jpg are KEPT — they are required for
+        // serving (orientation, duration, thumbnail).
         const detailsPath = path.join(outputDir, `${safeFilename} details.txt`);
         try { if (fs.existsSync(detailsPath)) fs.unlinkSync(detailsPath); } catch { /* ignore */ }
 

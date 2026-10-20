@@ -14,6 +14,7 @@ const RAW_AI_PROVIDER_MV = process.env.AI_PROVIDER;
 const AI_PROVIDER = RAW_AI_PROVIDER_MV !== undefined ? RAW_AI_PROVIDER_MV.trim().toLowerCase() || '' : 'ollama';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim() || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+const GROQ_API_KEY = process.env.GROQ_API_KEY?.trim() || '';
 const MEDIA_VERIFICATION_CONFIDENCE = Math.max(
     1,
     Math.min(10, Number.parseInt(process.env.MEDIA_VERIFICATION_CONFIDENCE || '6', 10) || 6),
@@ -221,6 +222,58 @@ Answer ONLY with a JSON object: {"passes": true/false, "confidence": 0-10, "reas
     return parseVerificationResponse(text, opts);
 }
 
+async function verifyWithGroq(
+    base64Image: string,
+    keywords: string,
+    mimeType: string,
+    opts: VisionCheckOptions,
+): Promise<VerificationResult> {
+    if (!GROQ_API_KEY) {
+        return unavailableResult('No Groq API key configured, verification could not run', opts);
+    }
+
+    const model = process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b';
+
+    let prompt = `Does this image match the concept: "${keywords}"?`;
+    if (opts.checkWatermark) {
+        prompt += ` Is there any visible WATERMARK or embedded TEXT overlay? (watermark must be false if none)`;
+    }
+    if (opts.checkSafety) {
+        prompt += ` Is the content SAFE and not NSFW? (safe must be true)`;
+    }
+    prompt += `\nAnswer ONLY with a JSON object: {"passes": true/false, "confidence": 0-10, "reason": "short reason", "watermark": true/false, "safe": true/false}
+confidence 0 = completely unrelated, 10 = perfect match.`;
+
+    const { data } = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+            model,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt },
+                        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
+                    ],
+                },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.1,
+            max_tokens: 100,
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${GROQ_API_KEY}`,
+            },
+            timeout: 30000,
+        },
+    );
+
+    const text = data?.choices?.[0]?.message?.content || '';
+    return parseVerificationResponse(text, opts);
+}
+
 function parseVerificationResponse(text: string, opts: VisionCheckOptions): VerificationResult {
     try {
         const cleaned = text
@@ -287,6 +340,8 @@ export async function verifyMedia(
     try {
         if (AI_PROVIDER === 'gemini' && GEMINI_API_KEY) {
             result = await verifyWithGemini(base64, keywordStr, mimeType, opts);
+        } else if (AI_PROVIDER === 'groq' && GROQ_API_KEY) {
+            result = await verifyWithGroq(base64, keywordStr, mimeType, opts);
         } else {
             result = await verifyWithOllama(base64, keywordStr, opts);
         }
