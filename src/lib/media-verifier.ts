@@ -246,34 +246,49 @@ async function verifyWithGroq(
     prompt += `\nAnswer ONLY with a JSON object: {"passes": true/false, "confidence": 0-10, "reason": "short reason", "watermark": true/false, "safe": true/false}
 confidence 0 = completely unrelated, 10 = perfect match.`;
 
-    const { data } = await axios.post(
-        'https://api.groq.com/openai/v1/chat/completions',
-        {
-            model,
-            messages: [
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const { data } = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
                 {
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: prompt },
-                        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
+                    model,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: [
+                                { type: 'text', text: prompt },
+                                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } },
+                            ],
+                        },
                     ],
+                    response_format: { type: 'json_object' },
+                    temperature: 0.1,
+                    max_tokens: 100,
                 },
-            ],
-            response_format: { type: 'json_object' },
-            temperature: 0.1,
-            max_tokens: 100,
-        },
-        {
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${GROQ_API_KEY}`,
-            },
-            timeout: 30000,
-        },
-    );
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${GROQ_API_KEY}`,
+                    },
+                    timeout: 30000,
+                },
+            );
 
-    const text = data?.choices?.[0]?.message?.content || '';
-    return parseVerificationResponse(text, opts);
+            const text = data?.choices?.[0]?.message?.content || '';
+            return parseVerificationResponse(text, opts);
+        } catch (error: any) {
+            const status = error?.response?.status;
+            if (status === 429 && attempt < 3) {
+                const delayMs = attempt * 2000;
+                console.log(`🧐 [VERIFY] Rate limited (429), retrying in ${delayMs}ms...`);
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+                continue;
+            }
+            throw error;
+        }
+    }
+
+    return unavailableResult('Groq verification failed after retries', opts);
 }
 
 function parseVerificationResponse(text: string, opts: VisionCheckOptions): VerificationResult {
