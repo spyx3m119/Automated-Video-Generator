@@ -352,11 +352,17 @@ export function jobPage(req: Request, jobId: string, cspNonce?: string): string 
             try {
                 payload = await response.json();
             } catch (error) {
-                throw new Error('Unexpected server response.');
+                const parseError = new Error('Unexpected server response.');
+                parseError.status = response.status;
+                throw parseError;
             }
 
             if (!response.ok || !payload.success) {
-                throw new Error(payload.error || payload.message || 'Request failed.');
+                const requestError = new Error(payload.error || payload.message || 'Request failed.');
+                // Carry the HTTP status so callers can tell "this job is gone"
+                // (404) apart from a transient blip worth retrying.
+                requestError.status = response.status;
+                throw requestError;
             }
 
             return payload;
@@ -479,7 +485,40 @@ export function jobPage(req: Request, jobId: string, cspNonce?: string): string 
                     window.clearInterval(timer);
                 }
             } catch (error) {
+                // A 404 means the job no longer exists — normally because the
+                // container was redeployed and its workspace (where jobs.json
+                // lives) was not persisted. Polling can never succeed, so stop
+                // and tell the user instead of retrying every few seconds forever.
+                if (error && error.status === 404) {
+                    window.clearInterval(timer);
+                    showJobGone();
+                    return;
+                }
                 console.error('Refresh failed:', error);
+            }
+        }
+
+        function showJobGone() {
+            const statusDisplay = document.getElementById('status-display');
+            if (statusDisplay) statusDisplay.textContent = 'not found';
+
+            const percent = document.getElementById('percent');
+            if (percent) percent.textContent = '--';
+
+            const progressLabel = document.getElementById('progress-label');
+            if (progressLabel) progressLabel.textContent = '--';
+
+            const progress = document.getElementById('progress');
+            if (progress) progress.style.width = '0%';
+
+            const message = document.getElementById('message');
+            if (message) message.textContent = 'This job is no longer available.';
+
+            const errorDetail = document.getElementById('error-detail');
+            if (errorDetail) {
+                errorDetail.style.display = 'block';
+                errorDetail.textContent =
+                    'Job not found. Jobs are stored inside the container, so a restart or redeploy clears them. Start a new render from the home page.';
             }
         }
 
