@@ -233,7 +233,8 @@ async function verifyWithGroq(
     }
 
     // Vision requires a multimodal model — openai/gpt-oss-20b is text-only.
-    const model = process.env.GROQ_VISION_MODEL?.trim() || 'qwen/qwen3.6-27b';
+    // qwen3.6-27b was a preview model and is gone; 3.8-27b is the production one.
+    const model = process.env.GROQ_VISION_MODEL?.trim() || 'qwen/qwen3.8-27b';
 
     let prompt = `Does this image match the concept: "${keywords}"?`;
     if (opts.checkWatermark) {
