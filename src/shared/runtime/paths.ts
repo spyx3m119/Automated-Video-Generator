@@ -101,6 +101,15 @@ export function resolvePublicFilePath(relativePath: string): string {
     if (fs.existsSync(stagingPath)) {
         return stagingPath;
     }
+    // Job assets (audio/, videos/, visuals/) live under workspace/<outputId>/,
+    // not under staging/. The review-phase "Planning & Timeline" previews them
+    // before the render phase copies them into staging/, so resolve
+    // workspace-relative paths too. Safe: normalizeRelativeSegments rejects `..`
+    // traversal and getViewFile's extension allowlist blocks non-media files.
+    const workspacePath = resolveWorkspacePath(...normalized);
+    if (fs.existsSync(workspacePath)) {
+        return workspacePath;
+    }
     return resolveBundledProjectPath('public', ...normalized);
 }
 
