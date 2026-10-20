@@ -76,6 +76,8 @@ interface RenderOptions {
     exportCaptions?: boolean;
     /** Sidecar cue mode. 'sentence' (default) or 'word' (karaoke). */
     captionCueMode?: 'sentence' | 'word';
+    /** Overall render progress (0-100). The caller wires this to the job store. */
+    onProgress?: (percent: number, message: string) => void;
 }
 
 function throwIfCancelled(shouldCancel?: () => boolean): void {
@@ -320,6 +322,14 @@ export const renderVideo = async (outputDir: string = resolveProjectPath('output
         let failedCount = 0;
         const failedScenes: number[] = [];
         let cumulativeFrames = 0;
+        const totalScenes = sceneData.scenes.length;
+        // Map per-scene Remotion progress onto the 75-99% band so the job store
+        // (and therefore the UI) advances during the render instead of sitting at
+        // 75% with no feedback until the whole render finishes.
+        const reportRenderProgress = (sceneIndex: number, sceneProgress: number) => {
+            const percent = Math.min(99, Math.round(75 + ((sceneIndex + sceneProgress) / totalScenes) * 24));
+            options.onProgress?.(percent, `Rendering scene ${sceneIndex + 1} of ${totalScenes}.`);
+        };
 
         for (let i = 0; i < sceneData.scenes.length; i++) {
             throwIfCancelled(shouldCancel);
@@ -338,6 +348,7 @@ export const renderVideo = async (outputDir: string = resolveProjectPath('output
                     segments.push(segmentPath);
                     cumulativeFrames += sceneDurationFrames;
                     skippedCount++;
+                    reportRenderProgress(i, 1);
                     continue;
                 }
             }
@@ -426,6 +437,7 @@ export const renderVideo = async (outputDir: string = resolveProjectPath('output
                         throwIfCancelled(shouldCancel);
                         const percent = Math.round(progress * 100);
                         writeProgress(`\r   ⏳ Progress: ${percent}%`);
+                        reportRenderProgress(i, progress);
                     },
                 });
                 throwIfCancelled(shouldCancel);
@@ -509,6 +521,7 @@ export const renderVideo = async (outputDir: string = resolveProjectPath('output
         console.log(
             `🔗 [RENDER] Concatenating ${validSegments.length} valid segments (${failedCount} skipped due to failures)...`,
         );
+        options.onProgress?.(98, 'Joining scenes into the final video.');
 
         // Create FFmpeg concat list
         const concatListPath = path.join(segmentsDir, 'segments.txt');

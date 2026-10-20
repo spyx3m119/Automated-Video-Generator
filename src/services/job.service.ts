@@ -280,10 +280,23 @@ async function runRenderPipeline(jobId: string, outputDir: string): Promise<void
     });
 
     const opts = getStoredRequest(jobId).options ?? {};
+    let lastReported = 75;
     await renderVideo(outputDir, {
         shouldCancel: () => isCancelRequested(jobId),
         exportCaptions: opts.exportCaptions,
         captionCueMode: opts.captionMode === 'word' ? 'word' : 'sentence',
+        onProgress: (percent, message) => {
+            // Throttle: persist at most once per percent so per-frame Remotion
+            // callbacks don't hammer the job store.
+            if (percent - lastReported < 1 && percent < 99) return;
+            lastReported = percent;
+            jobStore.set(jobId, {
+                status: 'processing',
+                phase: 'render',
+                progress: percent,
+                message,
+            });
+        },
     });
 
     assertNotCancelled(jobId);
