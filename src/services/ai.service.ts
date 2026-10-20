@@ -153,7 +153,35 @@ function getGroqApiKey(): string {
 }
 
 function getGroqModel(): string {
-    return process.env.GROQ_MODEL?.trim() || 'llama-3.1-8b-instant';
+    // llama-3.1-8b-instant is enterprise-only ("Contact Sales") as of 2026.
+    // openai/gpt-oss-20b is the fastest free-tier model.
+    return process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b';
+}
+
+function mapGroqError(error: unknown): ServiceUnavailableError {
+    if (error instanceof ServiceUnavailableError) {
+        return error;
+    }
+
+    if (axios.isAxiosError(error)) {
+        const groqMessage = error.response?.data?.error?.message;
+        if (groqMessage) {
+            return new ServiceUnavailableError(`Groq API error: ${groqMessage}`, {
+                provider: 'groq',
+                statusCode: error.response?.status,
+            });
+        }
+
+        return new ServiceUnavailableError(
+            error.message || 'Unknown network error occurred while reaching Groq API.',
+            {
+                provider: 'groq',
+                statusCode: error.response?.status,
+            },
+        );
+    }
+
+    return new ServiceUnavailableError('Unknown error while reaching Groq API.', { provider: 'groq' });
 }
 
 async function generateGroqContent(systemInstruction: string, prompt: string): Promise<string> {
@@ -196,7 +224,7 @@ async function generateGroqContent(systemInstruction: string, prompt: string): P
                 continue;
             }
 
-            throw mapGeminiError(error);
+            throw mapGroqError(error);
         }
     }
 
