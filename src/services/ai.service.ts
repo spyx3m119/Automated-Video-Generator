@@ -180,7 +180,12 @@ Water helps keep your skin healthy and radiant.`;
                 }
             }
             return { title, script: scriptLines.join('\n').trim() };
-        } catch {
+        } catch (error) {
+            aiLogger.error(
+                'ai.script.fallback',
+                { prompt: prompt.slice(0, 80), provider: 'ollama' },
+                error,
+            );
             return {
                 title: prompt.slice(0, 60) || 'Untitled',
                 script: `[Visual: ${prompt.slice(0, 80)}]\n${prompt}`,
@@ -206,7 +211,12 @@ Follow these rules exactly:
         } catch {
             return { title: 'Untitled AI Script', script: content };
         }
-    } catch {
+    } catch (error) {
+        aiLogger.error(
+            'ai.script.fallback',
+            { prompt: prompt.slice(0, 80), provider: 'gemini' },
+            error,
+        );
         return {
             title: prompt.slice(0, 60) || 'Untitled',
             script: `[Visual: ${prompt.slice(0, 80)}]\n${prompt}`,
