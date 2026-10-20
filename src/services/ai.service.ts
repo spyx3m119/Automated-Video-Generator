@@ -143,12 +143,73 @@ async function generateGeminiContent(systemInstruction: string, prompt: string):
     throw new ServiceUnavailableError('Gemini request failed.', { provider: 'gemini' });
 }
 
+function getGroqApiKey(): string {
+    const envValues = readEnvValues();
+    const apiKey = envValues.GROQ_API_KEY || process.env.GROQ_API_KEY;
+    if (!apiKey) {
+        throw new ServiceUnavailableError('GROQ_API_KEY is not set. Please save it in the portal setup.');
+    }
+    return apiKey;
+}
+
+function getGroqModel(): string {
+    return process.env.GROQ_MODEL?.trim() || 'llama-3.1-8b-instant';
+}
+
+async function generateGroqContent(systemInstruction: string, prompt: string): Promise<string> {
+    const apiKey = getGroqApiKey();
+    const model = getGroqModel();
+
+    for (let attempt = 1; attempt <= GEMINI_MAX_RETRIES; attempt += 1) {
+        try {
+            const response = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                {
+                    model,
+                    messages: [
+                        { role: 'system', content: systemInstruction },
+                        { role: 'user', content: prompt },
+                    ],
+                    response_format: { type: 'json_object' },
+                },
+                {
+                    timeout: GEMINI_TIMEOUT_MS,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${apiKey}`,
+                    },
+                },
+            );
+
+            const content = response.data?.choices?.[0]?.message?.content;
+            if (!content) {
+                throw new ServiceUnavailableError('Invalid or empty response from Groq.', { provider: 'groq' });
+            }
+
+            return content;
+        } catch (error) {
+            const retriable = attempt < GEMINI_MAX_RETRIES && shouldRetry(error);
+            if (retriable) {
+                const delayMs = attempt * 750;
+                aiLogger.warn('ai.request.retrying', { attempt, delayMs }, error);
+                await sleep(delayMs);
+                continue;
+            }
+
+            throw mapGeminiError(error);
+        }
+    }
+
+    throw new ServiceUnavailableError('Groq request failed.', { provider: 'groq' });
+}
+
 async function generateViaOllama(systemInstruction: string, prompt: string): Promise<string> {
     return ollamaGenerateContent(systemInstruction, prompt);
 }
 
 export async function generateScriptFromPrompt(prompt: string): Promise<ScriptGenerationResult> {
     const useOllama = AI_PROVIDER === 'ollama';
+    const useGroq = AI_PROVIDER === 'groq';
 
     if (useOllama) {
         try {
@@ -196,6 +257,38 @@ Water helps keep your skin healthy and radiant.`;
         }
     }
 
+    if (useGroq) {
+        try {
+            const systemInstruction = `You are an expert video script director. Turn the user's prompt into a highly detailed, engaging, and comprehensive video script.
+Follow these rules exactly:
+1. Divide the video into scenes. Include [Visual: ...] tags at the start of scenes to describe what we see.
+2. The spoken text must follow the visual tags.
+3. IMPORTANT: Do NOT include prefixes like (Narrator), Voiceover:, or speaker names before the spoken text. The TTS engine will literally read them out loud. Only provide the exact dialogue to be spoken.
+4. Keep [Visual: ...] tags SHORT and CONCISE (3-6 words). Use descriptive search keywords like "cinematic drone city sunset" or "close up coding on laptop". DO NOT write long paragraphs or over-explain. These are used as search queries for stock footage.
+5. Respond with ONLY a valid JSON object matching this schema: {"title": "A short video title", "script": "The full detailed script with visual tags..."}.
+6. Do NOT include markdown blocks like \`\`\`json. Return just the raw JSON.`;
+
+            const content = await generateGroqContent(systemInstruction, prompt);
+
+            try {
+                const parsed = parseJsonPayload<{ script?: string; title?: string }>(content, '');
+                return { title: parsed.title || 'Untitled AI Script', script: parsed.script || content };
+            } catch {
+                return { title: 'Untitled AI Script', script: content };
+            }
+        } catch (error) {
+            aiLogger.error(
+                'ai.script.fallback',
+                { prompt: prompt.slice(0, 80), provider: 'groq' },
+                error,
+            );
+            return {
+                title: prompt.slice(0, 60) || 'Untitled',
+                script: `[Visual: ${prompt.slice(0, 80)}]\n${prompt}`,
+            };
+        }
+    }
+
     try {
         const systemInstruction = `You are an expert video script director. Turn the user's prompt into a highly detailed, engaging, and comprehensive video script.
 Follow these rules exactly:
@@ -232,6 +325,7 @@ export async function generateMetadataAI(
     scenes: { voiceoverText: string; searchKeywords: string[] }[],
 ): Promise<{ description: string; hashtags: string }> {
     const useOllama = AI_PROVIDER === 'ollama';
+    const useGroq = AI_PROVIDER === 'groq';
     const sceneText = scenes.map((s) => s.voiceoverText).join('\n');
     const allKeywords = [...new Set(scenes.flatMap((s) => s.searchKeywords))];
 
@@ -259,6 +353,21 @@ Return ONLY a JSON object with "description" and "hashtags" fields. Hashtags sho
         }
     }
 
+    if (useGroq) {
+        const systemInstruction = `You are a social media content creator. Generate a compelling video description and relevant hashtags.
+Return ONLY a valid JSON object: {"description": "2-3 sentence description", "hashtags": "#tag1 #tag2 #tag3"}.
+Hashtags should be 10-15 relevant tags, space-separated with # prefix. Do NOT include markdown formatting.`;
+
+        const prompt = `Video title: "${title}"
+Scene voiceovers:
+${sceneText}
+
+Search keywords: ${allKeywords.join(', ')}`;
+
+        const content = await generateGroqContent(systemInstruction, prompt);
+        return parseJsonPayload<{ description: string; hashtags: string }>(content, 'Failed to generate metadata with AI.');
+    }
+
     const systemInstruction = `You are a social media content creator. Generate a compelling video description and relevant hashtags.
 Return ONLY a valid JSON object: {"description": "2-3 sentence description", "hashtags": "#tag1 #tag2 #tag3"}.
 Hashtags should be 10-15 relevant tags, space-separated with # prefix. Do NOT include markdown formatting.`;
@@ -279,6 +388,7 @@ export async function refineSceneAI(
     instruction: string,
 ): Promise<{ voiceoverText: string; searchKeywords: string[] }> {
     const useOllama = AI_PROVIDER === 'ollama';
+    const useGroq = AI_PROVIDER === 'groq';
 
     if (useOllama) {
         try {
@@ -297,6 +407,21 @@ Return ONLY the updated scene text (the spoken narration). Do not include any JS
         } catch {
             return { voiceoverText: text, searchKeywords: keywords };
         }
+    }
+
+    if (useGroq) {
+        const systemInstruction = 'You are a helpful video editor. Keep responses concise.';
+        const prompt = `Current scene text: "${text}"
+Current search keywords: ${JSON.stringify(keywords)}
+User instruction: "${instruction}"
+
+Return ONLY the updated scene text (the spoken narration). Do not include any JSON or extra text.`;
+
+        const content = await generateGroqContent(systemInstruction, prompt);
+        return {
+            voiceoverText: content.trim() || text,
+            searchKeywords: keywords,
+        };
     }
 
     try {
