@@ -232,7 +232,8 @@ async function verifyWithGroq(
         return unavailableResult('No Groq API key configured, verification could not run', opts);
     }
 
-    const model = process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b';
+    // Vision requires a multimodal model — openai/gpt-oss-20b is text-only.
+    const model = process.env.GROQ_VISION_MODEL?.trim() || 'qwen/qwen3.6-27b';
 
     let prompt = `Does this image match the concept: "${keywords}"?`;
     if (opts.checkWatermark) {
