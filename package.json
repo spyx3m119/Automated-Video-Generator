@@ -174,7 +174,7 @@
     "@types/node": "^22.10.5",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
-    "electron": "^41.1.1",
+    "electron": "^45.0.0",
     "electron-builder": "^26.8.1",
     "ffprobe-static": "^3.1.0",
     "eslint": "^9.39.5",
