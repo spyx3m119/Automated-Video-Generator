@@ -152,7 +152,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@remotion/captions": "^4.0.503",
-    "@remotion/cli": "^4.0.503",
+    "@remotion/cli": "^4.0.537",
     "@remotion/media-utils": "^4.0.503",
     "@remotion/renderer": "^4.0.503",
     "@remotion/shapes": "^4.0.503",
